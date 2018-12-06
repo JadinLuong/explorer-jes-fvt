@@ -1,0 +1,20 @@
+{
+	"name": "explorer-jes-function-tests",
+	"version": "0.0.1",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "mocha --watch"
+	},
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"chai": "^4.2.0",
+		"chai-things": "0.2.0",
+		"mocha": "^5.2.0",
+		"selenium-webdriver": "^4.0.0-alpha.1"
+	},
+	"devDependencies": {
+		"chai-things": "^0.2.0"
+	}
+}

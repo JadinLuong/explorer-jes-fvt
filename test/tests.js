@@ -1,7 +1,6 @@
 const {By, until} = require('selenium-webdriver');
 const expect = require('chai').expect;
 const assert = require('chai').assert;
-const should = require('chai').should;
 const chai = require('chai');
 chai.use(require('chai-things'));
 
@@ -16,6 +15,7 @@ const {
 	reloadAndOpenFilterPannel,
 	waitForAndExtractJobs,
 	setStatusFilter,
+	testPrefixFlterFetching,
 } = require('./utils');
 
 const USERNAME = process.env.USERNAME;
@@ -24,7 +24,7 @@ const ZOWE_JOB_NAME = process.env.ZOWE_JOB_NAME;
 const SERVER_HOST_NAME = process.env.SERVER_HOST_NAME;
 const SERVER_HTTPS_PORT = process.env.SERVER_HTTPS_PORT;
 
-describe('JES explorer function  verification tests', () => {
+describe('JES explorer function verification tests', () => {
 	let driver;
 
 	before('Initialise', async () => {
@@ -36,7 +36,7 @@ describe('JES explorer function  verification tests', () => {
 
 		driver = await getDriver();
 		try{
-			await loadPage(driver, `https://${SERVER_HOST_NAME}:${SERVER_HTTPS_PORT}/ui/v1/jobs`, USERNAME, PASSWORD);
+			await loadPage(driver, `https://${SERVER_HOST_NAME}:${SERVER_HTTPS_PORT}/ui/v1/explorer-jes`, USERNAME, PASSWORD);
 			//make sure tree and editor have loaded
 			await driver.wait(until.elementLocated(By.id('job-list')), 10000)
 			await driver.wait(until.elementLocated(By.id('embeddedEditor')), 10000)
@@ -47,11 +47,17 @@ describe('JES explorer function  verification tests', () => {
 	})
 
 	after('Close out', () => {
-		driver.quit();
+		if (driver) {
+			driver.quit();
+		}
 	})
 	
-	describe('Filters', () => {
-		describe('Filter card components', () => {
+	describe('JES explorer home view', () => {
+		it('Should handle rendering expected components (Navigator[filters+tree] & File Viewer)')
+		it('Should handle resizing of tree component dynamically')
+		it('Should handle resizing of editor component dynamically')
+
+		describe('Filter card component behaviour', () => {
 			describe('Pre expansion', () => {
 				it('Should render filter card (filter-view)', async () => {
 					const element = await driver.findElements(By.id('filter-view'));
@@ -154,38 +160,48 @@ describe('JES explorer function  verification tests', () => {
 				})
 			});
 			describe('Job filtering', () => {
-				it('Should handle fetching jobs based on prefix filter', async () => {
+				beforeEach( async () => {
 					await reloadAndOpenFilterPannel(driver);
-					expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
-					expect(await testTextInputFieldCanBeModified(driver, 'filter-prefix-field', ZOWE_JOB_NAME), 'filter-prefix-field wrong').to.be.true;
-					
-					await findAndClickApplyButton(driver);
-					const jobs = await waitForAndExtractJobs(driver);
-					expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
-
-					for(let job of jobs) {
-						const text = await job.getText();
-						expect(text).to.contain(ZOWE_JOB_NAME);
-					}
 				});
 
-				it('Should handle fetching only ACTIVE jobs', async () => {
-					await reloadAndOpenFilterPannel(driver);
-					expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
-					await setStatusFilter(driver, 'status-ACTIVE');
+				describe('Prefix Filter', () => {
+					it('Should handle fetching jobs based on full prefix (ZOWE_JOB_NAME)', async () => {
+						expect(await testPrefixFlterFetching(driver, ZOWE_JOB_NAME)).to.be.true;
+					});
 
-					await findAndClickApplyButton(driver);
-					const jobs = await waitForAndExtractJobs(driver);
-					expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
+					it('Should handle fetching jobs based on prefix with asterisk (ZOWE*)', async () => {
+						expect(await testPrefixFlterFetching(driver, 'ZOWE*')).to.be.true;
+					})
+				})
 
-					for(let job of jobs){
-						const text = await job.getText();
-						expect(text).to.contain('ACTIVE')
-					}
-				});
+				describe('Onwer Filter', () => {
+					it('Should handle fetching jobs based on owner filter')
+					// test for owner = IZUSVR, should pickup zowe jobs and 
+				})
+				
+				describe('Status Filter', () => {
+					it('Should handle fetching only ACTIVE jobs', async () => {
+						expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
+						await setStatusFilter(driver, 'status-ACTIVE');
 
-				it('Should handle fetching only INPUT jobs');
-				it('Should handle fetching only OUTPUT jobs');
+						await findAndClickApplyButton(driver);
+						const jobs = await waitForAndExtractJobs(driver);
+						expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
+
+						for(let job of jobs){
+							const text = await job.getText();
+							expect(text).to.contain('ACTIVE')
+						}
+					});
+
+					it('Should handle fetching only INPUT jobs');
+					it('Should handle fetching only OUTPUT jobs');
+				})
+
+				describe('Error handling', () => {
+					it('Should display warning when owner and prefix are *')
+					it('Should show no jobs found message when no jobs returned')
+				})
 			});
 
 			describe('Job Files', () => {
@@ -205,9 +221,11 @@ describe('JES explorer function  verification tests', () => {
 					expect(jobFiles).to.be.an('array').that.has.lengthOf.at.least(1);
 				});
 
+				it('Should handle un rendering job files when clicking an already toggle job')
 				it('Should handle opening a files content when clicked');
 				it('Should handle opening a files content unathorised for user and display error message');
 			});
+			it('Should handle reloading jobs when clicking refresh icon');
 			it('Should handle rendering context menu on right click', async () => {
 				await reloadAndOpenFilterPannel(driver);
 				expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
@@ -221,8 +239,34 @@ describe('JES explorer function  verification tests', () => {
 				await driver.sleep(4000)
 				expect(true).to.equal(true);
 			});
-			it('Should handle reloading jobs when clicking refresh icon');
 			it('Should handle puring a job');
 		});
-	});
+		describe('Editor behaviour', () => {
+			it('Should display job name, id and file name in card header')
+			it('Should display file contents in Orion text area')
+			it('Should highlight JESJCL correctly')
+			it('Should be read only')
+		})
+	})
+
+	describe('JES explorer home view with filters in url query', () => {
+		it('Should handle rendering the expected componets when url filter params are specified (same as home)')
+		describe('url queries deteced and put in filter component', () => {
+			it('Should handle setting prefix filter from url querry')
+			it('Should handle setting jobID from url query')
+			it('Should handle setting status from url query')
+			it('Should handle setting owner from url query')
+			it('Should handle setting all filters from url query')
+			it('Should handle a none recognised query parameter gracefully (still load page)')
+		})
+		describe('Job fetch', () => {
+			it('Should handle fetching jobs based on url queries')
+		})
+	})
+	describe('JES explorer spool file in url query (explorer-jes/#/viewer)', () => {
+		it('Should handle rendering expected components with viewer route (File Viewer)')
+		it('Should handle fetching file from url query string')
+		it('Should render file name, job name and job id in card header')
+		it('Should handle rendeing file contents in Orio editor')
+	})
 });

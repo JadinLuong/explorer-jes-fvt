@@ -12,7 +12,7 @@ async function loadPage(driver, page, username, password) {
 	await driver.manage().window().setRect({width: 1600, height: 800});
 	await driver.get(page);
 	await login(driver, username, password);
-	await driver.wait(until.titleIs('z/OS Explorer Atlas'), 2000);
+	await driver.wait(until.titleIs('JES Explorer'), 2000);
 }
 
 async function login(driver, username, password) {
@@ -140,6 +140,30 @@ async function setStatusFilter(driver, statusIdSelection){
 	await driver.sleep(1000); //wait for css transition
 }
 
+/**
+ * 
+ * @param {WebDriver} driver selinium-webdriver
+ * @param {string} prefix filter prefix
+ */
+async function testPrefixFlterFetching(driver, prefix){
+	expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
+	expect(await testTextInputFieldCanBeModified(driver, 'filter-prefix-field', prefix), 'filter-prefix-field wrong').to.be.true;
+	await findAndClickApplyButton(driver);
+
+	const jobs = await waitForAndExtractJobs(driver);
+	expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
+	
+	let allMatchFlag = true;
+	const searchPrefix = prefix.endsWith('*') ? prefix.substr(0, prefix.length - 1) : prefix;
+	for(let job of jobs) {
+		const text = await job.getText();
+		if (!text.startsWith(searchPrefix)){
+			allMatchFlag = false;
+		}
+	}
+	return allMatchFlag;
+}
+
 module.exports = {
 	getDriver,
 	loadPage,
@@ -151,4 +175,5 @@ module.exports = {
 	reloadAndOpenFilterPannel,
 	waitForAndExtractJobs,
 	setStatusFilter,
+	testPrefixFlterFetching,
 }

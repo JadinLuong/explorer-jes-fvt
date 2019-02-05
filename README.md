@@ -11,9 +11,6 @@
 1. Install Node with NPM
 2. Run `npm install`
 3. Install Mozilla Firefox
-4. Install geckodriver (WebDriver for Firefox - https://github.com/mozilla/geckodriver/releases)
-    1. Tested using geckodriver version 0.24.0 ( 2019-01-28)
-5. Add geckodriver to path
 
 ### Run Tests:
 ```

@@ -21,7 +21,9 @@ module.exports = {
         "jsx-a11y/no-static-element-interactions":0,
         "lines-between-class-members": ["error", "always"],
         "no-plusplus": ["error", { "allowForLoopAfterthoughts": true }],
-        "no-unused-expressions": 0
+        "no-unused-expressions": 0,
+        "no-restricted-syntax": ['error', 'LabeledStatement', 'WithStatement'],
+        "no-await-in-loop": 0,
     },
     "env": {
         "browser": true,

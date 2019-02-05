@@ -32,7 +32,6 @@ async function testElementAppearsXTimes(driver, id, count) {
         const elements = await driver.findElements(By.id(id));
         expect(elements).to.be.an('array').that.has.lengthOf(count);
     } catch (e) {
-        console.log(e.toString());
         return false;
     }
     return true;
@@ -50,7 +49,6 @@ async function testTextInputFieldCanBeModified(driver, id, replaceText = 'TEST')
         await element.clear();
         await element.sendKeys(replaceText);
     } catch (e) {
-        console.log(e.toString());
         return false;
     }
     return true;
@@ -67,7 +65,6 @@ async function testTextInputFieldValue(driver, id, expectedValue) {
         const element = await driver.findElement(By.id(id));
         expect(await element.getAttribute('value')).to.equal(expectedValue);
     } catch (e) {
-        console.log(e.toString());
         return false;
     }
     return true;
@@ -115,10 +112,10 @@ async function testColourOfStatus(driver, statusText, expectedColour) {
     await driver.findElements(By.css('.job-instance > li > div > span > span > div'));
     const statuses = await driver.findElements(By.css('.job-instance > li > div > span > span > div'));
     let correctColourFlag = true;
-    for (status of statuses) {
-        const text = await status.getText();
+    for (const jobStatus of statuses) {
+        const text = await jobStatus.getText();
         if (text.includes(statusText)) {
-            const css = await status.getCssValue('color');
+            const css = await jobStatus.getCssValue('color');
             if (css !== expectedColour) {
                 correctColourFlag = false;
             }
@@ -202,7 +199,7 @@ async function testOwnerFilterFetching(driver, owner, potentialJobs) {
         let allMatchFlag = true;
         for (const job of jobs) {
             const text = await job.getText();
-            if (!potentialJobs.some(job => { return text.startsWith(job); })) {
+            if (!potentialJobs.some(potentialJob => { return text.startsWith(potentialJob); })) {
                 allMatchFlag = true;
             }
         }
@@ -222,8 +219,7 @@ async function testStatusFilterFetching(driver, status, potentialStatuses) {
     let allMatchFlag = true;
     for (const job of jobs) {
         const text = await job.getText();
-        if (!potentialStatuses.some(status => { return text.includes(status); })) {
-            console.log(`none match: ${text}`);
+        if (!potentialStatuses.some(potentialStatus => { return text.includes(potentialStatus); })) {
             allMatchFlag = false;
         }
     }

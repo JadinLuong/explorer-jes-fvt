@@ -1,10 +1,31 @@
-# explorer-jes-fvt
+# Explorer-JES-fvt
 
-Work in progress
-    Not all tests are implemented
-    Not all tests are listed
-    No Jenkins file to control build process
-    No linting
+## Work in progress
 
-Tests can be run using:
-`USERNAME=IBMUSER PASSWORD=12345678 ZOWE_JOB_NAME=ZOWESVR SERVER_HOST_NAME=zosHost.com SERVER_HTTPS_PORT=7554 npm test`
+1. Not all tests are implemented
+2. Not all tests are listed
+3. No Jenkins file to control build process
+
+### Requirements
+
+1. Install Node with NPM
+2. Run `npm install`
+3. Install Mozilla Firefox
+4. Install geckodriver (WebDriver for Firefox - https://github.com/mozilla/geckodriver/releases)
+    1. Tested using geckodriver version 0.24.0 ( 2019-01-28)
+5. Add geckodriver to path
+
+### Run Tests:
+```
+USERNAME=IBMUSER \
+PASSWORD=12345678 \
+ZOWE_JOB_NAME=ZOWESVR \
+SERVER_HOST_NAME=zosHost.com \
+SERVER_HTTPS_PORT=7554 \
+npm test
+```
+
+### Run Linter:
+```
+npm run lint
+```

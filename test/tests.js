@@ -8,17 +8,19 @@ const {
     getDriver,
     loadPage,
     findAndClickApplyButton,
-    testElementAppearsXTimes,
+    findByCssAndClick,
+    testElementAppearsXTimesById,
+    testElementAppearsXTimesByCSS,
     testJobInstancesShowsStatus,
     testColourOfStatus,
     testTextInputFieldCanBeModified,
     testTextInputFieldValue,
     reloadAndOpenFilterPannel,
     waitForAndExtractJobs,
-    setStatusFilter,
     testPrefixFilterFetching,
     testOwnerFilterFetching,
     testStatusFilterFetching,
+    testJobFilesLoad,
 } = require('./utils');
 
 const {
@@ -61,53 +63,55 @@ describe('JES explorer function verification tests', () => {
         describe('Filter card component behaviour', () => {
             describe('Pre expansion', () => {
                 it('Should render filter card (filter-view)', async () => {
-                    const element = await driver.findElements(By.id('filter-view'));
-                    expect(element).to.be.an('array').that.has.lengthOf(1);
+                    const filterView = await driver.findElements(By.id('filter-view'));
+                    expect(filterView).to.be.an('array').that.has.lengthOf(1);
                 });
 
                 it('Should render filter card title', async () => {
-                    const elements = await driver.findElements(By.css('#filter-view > div > div > div'));
-                    for (const element of elements) {
-                        const text = await element.getText();
-                        expect(text).to.equal('Job Filters');
-                    }
+                    const cardTitle = await driver.findElements(By.css('#filter-view > div > div > div'));
+                    const text = await cardTitle[0].getText();
+                    expect(text).to.equal('Job Filters');
                 });
 
                 it('Should render filter card expand icon (svg)', async () => {
-                    const elements = await driver.findElements(By.css('#filter-view > div > div > button > div > svg'));
-                    expect(elements).to.be.an('array').that.has.lengthOf(1);
+                    const expandIcon = await driver.findElements(By.css('#filter-view > div > div > button > div > svg'));
+                    expect(expandIcon).to.be.an('array').that.has.lengthOf(1);
                 });
 
                 it('Should not render filter-form before expansion', async () => {
-                    const elements = await driver.findElements(By.id('filter-form'));
-                    expect(elements).to.be.an('array').that.has.lengthOf(0);
+                    const filterForm = await driver.findElements(By.id('filter-form'));
+                    expect(filterForm).to.be.an('array').that.has.lengthOf(0);
                 });
 
                 it('Should not render filter-input-fields before expansion', async () => {
-                    expect(await testElementAppearsXTimes(driver, 'filter-owner-field', 0), 'filter-owner-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-prefix-field', 0), 'filter-prefix-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-jobId-field', 0), 'filter-jobId-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-status-field', 0), 'filter-status-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-owner-field', 0), 'filter-owner-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-prefix-field', 0), 'filter-prefix-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-jobId-field', 0), 'filter-jobId-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-status-field', 0), 'filter-status-field wrong').to.be.true;
                 });
 
                 it('Should render filter-form after card click', async () => {
                     await reloadAndOpenFilterPannel(driver);
-                    const elements = await driver.findElements(By.id('filter-form'));
-                    expect(elements).to.be.an('array').that.has.lengthOf(1);
+                    const filterForm = await driver.findElements(By.id('filter-form'));
+                    expect(filterForm).to.be.an('array').that.has.lengthOf(1);
                 });
             });
 
             describe('Post expansion', () => {
+                beforeEach(async () => {
+                    await reloadAndOpenFilterPannel(driver);
+                });
+
                 it('Should render filter-input-fields after expansion', async () => {
-                    expect(await testElementAppearsXTimes(driver, 'filter-owner-field', 1), 'filter-owner-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-prefix-field', 1), 'filter-prefix-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-jobId-field', 1), 'filter-jobId-field wrong').to.be.true;
-                    expect(await testElementAppearsXTimes(driver, 'filter-status-field', 1), 'filter-status-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-owner-field', 1), 'filter-owner-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-prefix-field', 1), 'filter-prefix-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-jobId-field', 1), 'filter-jobId-field wrong').to.be.true;
+                    expect(await testElementAppearsXTimesById(driver, 'filter-status-field', 1), 'filter-status-field wrong').to.be.true;
                 });
 
                 it('Should pre-populate owner field with username', async () => {
-                    const element = await driver.findElement(By.id('filter-owner-field'));
-                    expect(await element.getAttribute('value')).to.equal(USERNAME);
+                    const ownerField = await driver.findElement(By.id('filter-owner-field'));
+                    expect(await ownerField.getAttribute('value')).to.equal(USERNAME);
                 });
 
                 it('Should allow input fields to be changed', async () => {
@@ -117,20 +121,31 @@ describe('JES explorer function verification tests', () => {
                 });
 
                 it('Should reset filter fields when reset clicked', async () => {
-                    const element = await driver.findElement(By.id('filters-reset-button'));
-                    await element.click();
+                    expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field'), 'filter-owner-field wrong').to.be.true;
+                    expect(await testTextInputFieldCanBeModified(driver, 'filter-prefix-field'), 'filter-prefix-field wrong').to.be.true;
+                    expect(await testTextInputFieldCanBeModified(driver, 'filter-jobId-field'), 'filter-jobId-field wrong').to.be.true;
+                    const resetButton = await driver.findElement(By.id('filters-reset-button'));
+                    await resetButton.click();
                     expect(await testTextInputFieldValue(driver, 'filter-owner-field', USERNAME), 'filter-owner-field wrong').to.be.true;
                     expect(await testTextInputFieldValue(driver, 'filter-prefix-field', '*'), 'filter-prefix-field wrong').to.be.true;
                     expect(await testTextInputFieldValue(driver, 'filter-jobId-field', '*'), 'filter-jobId-field wrong').to.be.true;
                 });
 
-                it('Should handle closing the filter card when clicking apply');
-                it('Should handle closing the filter card when clicking card header');
+                it('Should handle closing the filter card when clicking apply', async () => {
+                    await findAndClickApplyButton(driver);
+                    expect(await testElementAppearsXTimesById(driver, 'filter-form', 0)).to.be.true;
+                });
+
+                it('Should handle closing the filter card when clicking card header', async () => {
+                    const cardHeader = await driver.findElements(By.css('#filter-view > div > div'));
+                    await cardHeader[0].click();
+                    expect(await testElementAppearsXTimesByCSS(driver, 'filter-form', 0)).to.be.true;
+                });
             });
         });
 
         describe('Tree interaction', () => {
-            // TODO:: Implement once we have an ID fro refresh icon and loading icon
+            // TODO:: Implement once we have an ID for refresh icon and loading icon
             it.skip('Should handle reloading jobs when clicking refresh icon');
             describe('Job status labels', () => {
                 before(async () => {
@@ -217,7 +232,7 @@ describe('JES explorer function verification tests', () => {
                         expect(await testStatusFilterFetching(driver, 'INPUT')).to.be.true;
                     });
                     it('Should handle fetching only OUTPUT jobs', async () => {
-                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND S', 'OUTPUT', 'CC 00', 'CANCELED', 'JCL ERROR'])).to.be.true;
+                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND S', 'OUTPUT', 'CC ', 'CANCELED', 'JCL ERROR'])).to.be.true;
                     });
                 });
 
@@ -229,23 +244,39 @@ describe('JES explorer function verification tests', () => {
 
             describe('Job Files', () => {
                 it('Should handle rendering job files when clicking on a job', async () => {
-                    await reloadAndOpenFilterPannel(driver);
-                    expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
-                    expect(await testTextInputFieldCanBeModified(driver, 'filter-prefix-field', ZOWE_JOB_NAME), 'filter-prefix-field wrong').to.be.true;
-                    await setStatusFilter(driver, 'status-ACTIVE');
-
-                    await findAndClickApplyButton(driver);
-                    const jobs = await waitForAndExtractJobs(driver);
-                    expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
-
-                    await jobs[0].click();
-                    await driver.wait(until.elementLocated(By.className('job-file')));
-                    const jobFiles = await driver.findElements(By.className('job-file'));
-                    expect(jobFiles).to.be.an('array').that.has.lengthOf.at.least(1);
+                    expect(await testJobFilesLoad(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE')).to.be.true;
                 });
 
-                it('Should handle un rendering job files when clicking an already toggle job');
-                it('Should handle opening a files content when clicked');
+                it('Should handle rendering multiple jobs files', async () => {
+                    expect(await testJobFilesLoad(driver, 'IZUSVR', '*', 'status-ACTIVE')).to.be.true;
+                });
+
+                it('Should handle un rendering job files when clicking an already toggle job', async () => {
+                    expect(await testJobFilesLoad(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE')).to.be.true;
+
+                    const jobLink = await driver.findElements(By.css('.job-instance > li > div> .content-link'));
+                    expect(jobLink).to.be.an('array').that.has.lengthOf.at.least(1);
+                    await jobLink[0].click();
+
+                    const jobFiles = await driver.findElements(By.className('job-file'));
+                    expect(jobFiles).to.be.an('array').that.has.lengthOf(0);
+                });
+
+                it('Should handle opening a files content when clicked', async () => {
+                    expect(await testJobFilesLoad(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE')).to.be.true;
+                    const fileLink = await driver.findElements(By.css('.job-instance > ul > li > .content-link'));
+                    expect(fileLink).to.be.an('array').that.has.lengthOf.at.least(1);
+                    await fileLink[0].click();
+                    const viewer = await driver.findElement(By.css('#embeddedEditor > div > div > .textviewContent'));
+                    const text = await viewer.getText();
+                    expect(text).to.have.lengthOf.greaterThan(1);
+                });
+
+                // TODO:: Implement once we have IDs for refresh vs loading icon
+                it.skip('Should handle setting refresh icon to loading icon when job file loading', async () => {
+                    expect(await testJobFilesLoad(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE')).to.be.true;
+                    await findByCssAndClick(driver, '#tree-text-content > svg');
+                });
                 it('Should handle opening a files content unathorised for user and display error message');
             });
             it('Should handle rendering context menu on right click', async () => {
@@ -258,10 +289,13 @@ describe('JES explorer function verification tests', () => {
                 expect(jobs).to.be.an('array').that.has.lengthOf.at.least(1);
                 const actions = driver.actions();
                 await actions.contextClick(jobs[0]).perform();
-                await driver.sleep(4000);
-                expect(true).to.equal(true);
+                await driver.sleep(1000); // TODO:: replace with driver wait for element to be visible
+                const contextMenuEntries = await driver.findElements(By.css('.job-instance > nav > div'));
+                const text = await contextMenuEntries[0].getText();
+                expect(text).to.equal('Purge Job');
             });
             it('Should handle puring a job');
+            it('Should handle closing context menu when clicking elsewhere on screen');
         });
         describe('Editor behaviour', () => {
             it('Should display job name, id and file name in card header');
@@ -273,7 +307,7 @@ describe('JES explorer function verification tests', () => {
 
     describe('JES explorer home view with filters in url query', () => {
         it('Should handle rendering the expected componets when url filter params are specified (same as home)');
-        describe('url queries deteced and put in filter component', () => {
+        describe('url queries detected and put in filter component', () => {
             it('Should handle setting prefix filter from url querry');
             it('Should handle setting jobID from url query');
             it('Should handle setting status from url query');

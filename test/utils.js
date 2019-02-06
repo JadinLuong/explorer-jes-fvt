@@ -27,9 +27,25 @@ async function loadPage(driver, page, username, password) {
  * @param {string} id html id
  * @param {int} count expected occurences
  */
-async function testElementAppearsXTimes(driver, id, count) {
+async function testElementAppearsXTimesById(driver, id, count) {
     try {
         const elements = await driver.findElements(By.id(id));
+        expect(elements).to.be.an('array').that.has.lengthOf(count);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ *
+ * @param {WebDriver} driver selenium-webdriver
+ * @param {string} id html css path
+ * @param {int} count expected occurences
+ */
+async function testElementAppearsXTimesByCSS(driver, css, count) {
+    try {
+        const elements = await driver.findElements(By.css(css));
         expect(elements).to.be.an('array').that.has.lengthOf(count);
     } catch (e) {
         return false;
@@ -154,6 +170,7 @@ async function waitForAndExtractJobs(driver) {
 async function setStatusFilter(driver, statusIdSelection) {
     const statusSelector = await driver.findElement(By.id('filter-status-field'));
     await statusSelector.click();
+    await driver.wait(until.elementLocated(By.id(statusIdSelection)));
     const activeStatus = await driver.findElement(By.id(statusIdSelection));
     await activeStatus.click();
     await driver.wait(until.elementIsNotVisible(activeStatus), 10000);
@@ -178,6 +195,7 @@ async function testPrefixFilterFetching(driver, prefix) {
         const text = await job.getText();
         if (!text.startsWith(searchPrefix)) {
             allMatchFlag = false;
+            console.log(`${text} is not expected`);
         }
     }
     return allMatchFlag;
@@ -200,7 +218,8 @@ async function testOwnerFilterFetching(driver, owner, potentialJobs) {
         for (const job of jobs) {
             const text = await job.getText();
             if (!potentialJobs.some(potentialJob => { return text.startsWith(potentialJob); })) {
-                allMatchFlag = true;
+                allMatchFlag = false;
+                console.log(`${text} is not expected status`);
             }
         }
         return allMatchFlag;
@@ -210,7 +229,7 @@ async function testOwnerFilterFetching(driver, owner, potentialJobs) {
 }
 
 async function testStatusFilterFetching(driver, status, potentialStatuses) {
-    expect(await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*'), 'filter-owner-field wrong').to.be.true;
+    await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*');
     await setStatusFilter(driver, `status-${status}`);
     await findAndClickApplyButton(driver);
 
@@ -221,15 +240,37 @@ async function testStatusFilterFetching(driver, status, potentialStatuses) {
         const text = await job.getText();
         if (!potentialStatuses.some(potentialStatus => { return text.includes(potentialStatus); })) {
             allMatchFlag = false;
+            console.log(`${text} is not an expected status`);
         }
     }
     return allMatchFlag;
 }
 
+async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter) {
+    await reloadAndOpenFilterPannel(driver);
+    await testTextInputFieldCanBeModified(driver, 'filter-owner-field', ownerFilter);
+    await testTextInputFieldCanBeModified(driver, 'filter-prefix-field', prefixFilter);
+    await setStatusFilter(driver, statusFilter);
+
+    await findAndClickApplyButton(driver);
+    const jobs = await waitForAndExtractJobs(driver);
+    if (jobs.length === 0) return false; // Couldnt find any jobs
+
+    let foundFiles = true;
+    for (const job of jobs) {
+        await job.click();
+        await driver.wait(until.elementLocated(By.className('job-file')));
+        const jobFiles = await driver.findElements(By.className('job-file'));
+        if (jobFiles.length < 1) foundFiles = false;
+    }
+    return foundFiles;
+}
+
 module.exports = {
     getDriver,
     loadPage,
-    testElementAppearsXTimes,
+    testElementAppearsXTimesById,
+    testElementAppearsXTimesByCSS,
     testJobInstancesShowsStatus,
     testColourOfStatus,
     testTextInputFieldCanBeModified,
@@ -237,8 +278,8 @@ module.exports = {
     findAndClickApplyButton,
     reloadAndOpenFilterPannel,
     waitForAndExtractJobs,
-    setStatusFilter,
     testPrefixFilterFetching,
     testOwnerFilterFetching,
     testStatusFilterFetching,
+    testJobFilesLoad,
 };

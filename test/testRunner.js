@@ -8,20 +8,23 @@ const {
     getDriver,
     loadPage,
     findAndClickApplyButton,
-    findByCssAndClick,
+    reloadAndOpenFilterPannel,
+    waitForAndExtractJobs,
+} = require('./utilities');
+
+const {
     testElementAppearsXTimesById,
     testElementAppearsXTimesByCSS,
+    testWindowHeightChangeForcesComponentHeightChange,
     testJobInstancesShowsStatus,
     testColourOfStatus,
     testTextInputFieldCanBeModified,
     testTextInputFieldValue,
-    reloadAndOpenFilterPannel,
-    waitForAndExtractJobs,
     testPrefixFilterFetching,
     testOwnerFilterFetching,
     testStatusFilterFetching,
     testJobFilesLoad,
-} = require('./utils');
+} = require('./testFunctions');
 
 const {
     USERNAME, PASSWORD, ZOWE_JOB_NAME, SERVER_HOST_NAME, SERVER_HTTPS_PORT,
@@ -37,12 +40,13 @@ describe('JES explorer function verification tests', () => {
         expect(SERVER_HOST_NAME, 'SERVER_HOST_NAME is not defined').to.not.be.empty;
         expect(SERVER_HTTPS_PORT, 'SERVER_HTTPS_PORT is not defined').to.not.be.empty;
 
+        // TODO:: Do we need to turn this into a singleton in order to have driver accessible by multiple files in global namespace?
         driver = await getDriver();
         try {
             await loadPage(driver, `https://${SERVER_HOST_NAME}:${SERVER_HTTPS_PORT}/ui/v1/explorer-jes`, USERNAME, PASSWORD);
             // make sure tree and editor have loaded
-            await driver.wait(until.elementLocated(By.id('job-list')), 10000);
-            await driver.wait(until.elementLocated(By.id('embeddedEditor')), 10000);
+            await driver.wait(until.elementLocated(By.id('job-list')), 30000);
+            await driver.wait(until.elementLocated(By.id('embeddedEditor')), 30000);
             await driver.sleep(5000);
         } catch (e) {
             assert.fail(`Failed to initialise: ${e}`);
@@ -57,8 +61,26 @@ describe('JES explorer function verification tests', () => {
 
     describe('JES explorer home view', () => {
         it('Should handle rendering expected components (Navigator[filters+tree] & File Viewer)');
-        it('Should handle resizing of tree component dynamically');
-        it('Should handle resizing of editor component dynamically');
+        describe('Component resizing', () => {
+            afterEach(async () => {
+                await driver.manage().window().setRect({ width: 1600, height: 800 });
+            });
+            // TODO:: replace offset with constant
+            it('Should handle resizing of tree card component', async () => {
+                expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'tree-text-content', 126)).to.be.true;
+            });
+            // TODO:: change overflow of job-list to scroll so we can check this correctly
+            it.skip('Should handle resizing just the tree', async () => {
+                expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'job-list', 126 + 104)).to.be.true;
+            });
+            // TODO:: need to remove browser offset from orion editor component in Content Viewer
+            it.skip('Should handle resizing of editor card component', async () => {
+                expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'content-viewer', 126)).to.be.true;
+            });
+            it('Should handle resizing just the editor text area', async () => {
+                expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'embeddedEditor', 126 + 8)).to.be.true;
+            });
+        });
 
         describe('Filter card component behaviour', () => {
             describe('Pre expansion', () => {
@@ -275,7 +297,7 @@ describe('JES explorer function verification tests', () => {
                 // TODO:: Implement once we have IDs for refresh vs loading icon
                 it.skip('Should handle setting refresh icon to loading icon when job file loading', async () => {
                     expect(await testJobFilesLoad(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE')).to.be.true;
-                    await findByCssAndClick(driver, '#tree-text-content > svg');
+                    // await findByCssAndClick(driver, '#tree-text-content > svg');
                 });
                 it('Should handle opening a files content unathorised for user and display error message');
             });

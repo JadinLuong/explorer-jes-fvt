@@ -1,25 +1,12 @@
-const { Capabilities, Builder } = require('selenium-webdriver');
-const { By, Key, until } = require('selenium-webdriver');
+const { By, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 
-async function getDriver() {
-    const capabilities = Capabilities.firefox();
-    capabilities.setAcceptInsecureCerts(true);
-    return new Builder().forBrowser('firefox').withCapabilities(capabilities).build();
-}
-
-async function login(driver, username, password) {
-    const alert = await driver.wait(until.alertIsPresent(), 20000);
-    await alert.sendKeys(username + Key.TAB + password);
-    await alert.accept();
-}
-
-async function loadPage(driver, page, username, password) {
-    await driver.manage().window().setRect({ width: 1600, height: 800 });
-    await driver.get(page);
-    await login(driver, username, password);
-    await driver.wait(until.titleIs('JES Explorer'), 2000);
-}
+const {
+    findAndClickApplyButton,
+    waitForAndExtractJobs,
+    setStatusFilter,
+    reloadAndOpenFilterPannel,
+} = require('./utilities');
 
 /**
  *
@@ -53,6 +40,20 @@ async function testElementAppearsXTimesByCSS(driver, css, count) {
     return true;
 }
 
+async function testWindowHeightChangeForcesComponentHeightChange(driver, component, browserOffSet) {
+    let allResized = true;
+    for (let i = 300; i <= 1000 && allResized; i += 100) {
+        await driver.manage().window().setRect({ width: 1600, height: i });
+        const contentViewer = await driver.findElement(By.id(component));
+        const height = await contentViewer.getCssValue('height');
+        const heightInt = parseInt(height.substr(0, height.length - 2), 10);
+        if (heightInt + browserOffSet !== i) allResized = false;
+        console.log(heightInt);
+        console.log(heightInt + browserOffSet);
+    }
+    return allResized;
+}
+
 /**
  *
  * @param {WebDriver} driver selenium-webdriver
@@ -84,18 +85,6 @@ async function testTextInputFieldValue(driver, id, expectedValue) {
         return false;
     }
     return true;
-}
-
-/**
- *
- * @param {WebDriver} driver selenium-webdriver
- */
-async function findAndClickApplyButton(driver) {
-    const applyButton = await driver.findElement(By.id('filters-apply-button'));
-    await driver.wait(until.elementIsVisible(applyButton), 10000);
-    await applyButton.click();
-    await driver.sleep(1000); // Make sure we don't just notice the old jobs
-    await driver.wait(until.elementLocated(By.className('job-instance')), 10000);
 }
 
 /**
@@ -138,43 +127,6 @@ async function testColourOfStatus(driver, statusText, expectedColour) {
         }
     }
     return correctColourFlag;
-}
-
-/**
- *
- * @param {WebDriver} driver selenium-webdriver
- */
-async function reloadAndOpenFilterPannel(driver) {
-    await driver.navigate().refresh();
-    await driver.wait(until.elementLocated(By.className('job-instance')), 10000);
-    const element = await driver.findElement(By.id('filter-view'));
-    await element.click();
-}
-
-/**
- *
- * @param {WebDriver} driver selenium-webdriver
- */
-async function waitForAndExtractJobs(driver) {
-    await driver.sleep(1000);
-    await driver.wait(until.elementLocated(By.className('job-instance')), 10000);
-    const jobs = await driver.findElements(By.className('job-instance'));
-    return jobs;
-}
-
-/**
- *
- * @param {WebDriver} driver selenium-webdriver
- * @param {string} statusIdSelection id of status field in status dropdown
- */
-async function setStatusFilter(driver, statusIdSelection) {
-    const statusSelector = await driver.findElement(By.id('filter-status-field'));
-    await statusSelector.click();
-    await driver.wait(until.elementLocated(By.id(statusIdSelection)));
-    const activeStatus = await driver.findElement(By.id(statusIdSelection));
-    await activeStatus.click();
-    await driver.wait(until.elementIsNotVisible(activeStatus), 10000);
-    await driver.sleep(1000); // wait for css transition
 }
 
 /**
@@ -267,17 +219,13 @@ async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter)
 }
 
 module.exports = {
-    getDriver,
-    loadPage,
     testElementAppearsXTimesById,
     testElementAppearsXTimesByCSS,
+    testWindowHeightChangeForcesComponentHeightChange,
     testJobInstancesShowsStatus,
     testColourOfStatus,
     testTextInputFieldCanBeModified,
     testTextInputFieldValue,
-    findAndClickApplyButton,
-    reloadAndOpenFilterPannel,
-    waitForAndExtractJobs,
     testPrefixFilterFetching,
     testOwnerFilterFetching,
     testStatusFilterFetching,

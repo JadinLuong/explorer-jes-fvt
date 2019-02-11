@@ -3,6 +3,7 @@ const { expect } = require('chai');
 const { assert } = require('chai');
 const chai = require('chai');
 chai.use(require('chai-things'));
+require('geckodriver');
 
 const {
     getDriver,
@@ -182,7 +183,7 @@ describe('JES explorer function verification tests', () => {
                 it('Should handle showing jobs as ACTIVE', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'ACTIVE'), 'show job status: ACTIVE').to.be.true;
                 });
-                // TODO:: Implement once we have the dive wrapper around ACTIVE jobs
+                // TODO:: Implement once we have the div wrapper around ACTIVE jobs
                 it.skip('Should handle showing ACTIVE jobs with blue status');
 
                 it('Should handle showing jobs as finished with CC 00', async () => {

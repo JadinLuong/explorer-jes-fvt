@@ -11,8 +11,12 @@
 1. Install Node with NPM
 2. Run `npm install`
 3. Install Mozilla Firefox
+4. Access to a Zowe install running on z/OS
 
 ### Run Tests:
+
+Parameter values should be replaced with your own
+
 ```
 USERNAME=IBMUSER \
 PASSWORD=12345678 \

@@ -48,8 +48,6 @@ async function testWindowHeightChangeForcesComponentHeightChange(driver, compone
         const height = await contentViewer.getCssValue('height');
         const heightInt = parseInt(height.substr(0, height.length - 2), 10);
         if (heightInt + browserOffSet !== i) allResized = false;
-        console.log(heightInt);
-        console.log(heightInt + browserOffSet);
     }
     return allResized;
 }

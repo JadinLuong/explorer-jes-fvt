@@ -1,6 +1,15 @@
 const { Capabilities, Builder } = require('selenium-webdriver');
 const { By, Key, until } = require('selenium-webdriver');
 
+
+const textHighlightColors = {
+    'variable-language': 'rgb(127, 0, 85)',
+    'cm-string': 'rgb(0, 0, 255)',
+    comment: 'rgb(53, 125, 33)',
+    'cm-attribute': 'rgb(127, 0, 127)',
+    none: 'rgb(51, 51, 51)',
+};
+
 async function getDriver() {
     const capabilities = Capabilities.firefox();
     capabilities.setAcceptInsecureCerts(true);
@@ -76,4 +85,5 @@ module.exports = {
     reloadAndOpenFilterPannel,
     waitForAndExtractJobs,
     setStatusFilter,
+    textHighlightColors,
 };

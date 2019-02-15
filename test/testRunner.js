@@ -11,6 +11,7 @@ const {
     findAndClickApplyButton,
     reloadAndOpenFilterPannel,
     waitForAndExtractJobs,
+    textHighlightColors,
 } = require('./utilities');
 
 const {
@@ -25,10 +26,13 @@ const {
     testOwnerFilterFetching,
     testStatusFilterFetching,
     testJobFilesLoad,
+    testJobFilesClick,
 } = require('./testFunctions');
 
+require('dotenv').config();
+
 const {
-    USERNAME, PASSWORD, ZOWE_JOB_NAME, SERVER_HOST_NAME, SERVER_HTTPS_PORT,
+    ZOSUSERNAME: USERNAME, PASSWORD, ZOWE_JOB_NAME, SERVER_HOST_NAME, SERVER_HTTPS_PORT,
 } = process.env;
 
 describe('JES explorer function verification tests', () => {
@@ -317,14 +321,105 @@ describe('JES explorer function verification tests', () => {
                 const text = await contextMenuEntries[0].getText();
                 expect(text).to.equal('Purge Job');
             });
-            it('Should handle puring a job');
+            // TODO: check after PURGE API is validated on HSS and ZD&T
+            it('Should handle purging a job');
             it('Should handle closing context menu when clicking elsewhere on screen');
         });
         describe('Editor behaviour', () => {
-            it('Should display job name, id and file name in card header');
-            it('Should display file contents in Orion text area');
-            it('Should highlight JESJCL correctly');
-            it('Should be read only');
+            const jobFileName = 'JESJCL';
+
+            before('before editor behavior', async () => {
+                expect(await testJobFilesClick(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE', jobFileName)).to.be.true;
+                await driver.sleep(1000); // TODO:: replace with driver wait for element to be visible
+            });
+
+            it('Set content viewer header to Loading:');
+
+            it('Should display job name, id and file name in card header', async () => {
+                const viewer = await driver.findElements(By.css('#content-viewer > div > div > div > span'));
+                const text = await viewer[0].getText();
+                expect(text).to.not.be.empty;
+                expect(text).to.not.equals('Content Viewer');
+                expect(text).to.not.contains('Loading:');
+                const [jobName, id, fileName] = text.split(' - ');
+                expect(jobName).to.be.equal(ZOWE_JOB_NAME);
+                expect(fileName).to.be.equal(jobFileName);
+                expect(id.startsWith('STC')).to.be.true;
+            });
+
+            it('Should display file contents in Orion text area', async () => {
+                const textLineDivs = await driver.findElements(By.css('.textviewContent > div'));
+                expect(textLineDivs)
+                    .to.be.an('array')
+                    .that.has.length.gte(1);
+            });
+            it('Should highlight JESJCL correctly', async () => {
+                await driver.wait(until.elementLocated(By.css('.textviewContent > div > span')));
+
+                const textLineSpans = await driver.findElements(By.css('.textviewContent > div > span'));
+
+                expect(textLineSpans)
+                    .to.be.an('array')
+                    .that.has.length.gte(1);
+
+                const elems = await Promise.all(
+                    textLineSpans.map(async ld => {
+                        const elemText = await ld.getText();
+                        const elemCss = await ld.getAttribute('class');
+                        const elemColor = await ld.getCssValue('color');
+                        return { elemText, elemCss, elemColor };
+                    }),
+                );
+
+                let testColors = false;
+                // eslint-disable-next-line func-names
+                Object.keys(textHighlightColors).forEach(cc => {
+                    let colorClass = cc;
+                    testColors = false;
+                    const colorVal = textHighlightColors[colorClass];
+                    if (colorClass === 'none') {
+                        colorClass = '';
+                    }
+                    const colorArray = [
+                        ...new Set(
+                            elems
+                                .filter(e => {
+                                    return e.elemCss === colorClass;
+                                })
+                                .map(e => {
+                                    return e.elemColor;
+                                }),
+                        )];
+                    expect(colorArray)
+                        .to.be.an('array')
+                        .that.has.lengthOf(1);
+                    expect(colorArray[0]).to.be.equal(colorVal);
+                    testColors = true;
+                });
+
+                expect(testColors).to.be.true;
+            });
+
+            it('Should be read only', async () => {
+                const textLines = await driver.findElements(By.css('.textviewContent > div > span'));
+                expect(textLines)
+                    .to.be.an('array')
+                    .that.has.length.gte(1);
+                const [line1] = textLines;
+                await line1.click();
+                const beforeText = await line1.getText();
+                expect(beforeText).to.not.be.undefined;
+                let isExceptionThrown = false;
+                try {
+                    await line1.sendKeys('dummy text');
+                } catch (err) {
+                    isExceptionThrown = true;
+                }
+
+                expect(isExceptionThrown).to.be.true;
+                const afterText = await line1.getText();
+                expect(beforeText).to.be.equal(afterText);
+            });
         });
     });
 

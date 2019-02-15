@@ -196,6 +196,13 @@ async function testStatusFilterFetching(driver, status, potentialStatuses) {
     return allMatchFlag;
 }
 
+/**
+ *
+ * @param {WebDriver} driver selinium-webdriver
+ * @param {string} owner filter owner
+ * @param {string} prefix filter prefix
+ * @param {string} status filter status
+ */
 async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter) {
     await reloadAndOpenFilterPannel(driver);
     await testTextInputFieldCanBeModified(driver, 'filter-owner-field', ownerFilter);
@@ -216,6 +223,32 @@ async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter)
     return foundFiles;
 }
 
+/**
+ *
+ * @param {WebDriver} driver selinium-webdriver
+ * @param {string} ownerFilter filter owner
+ * @param {string} prefixFilter filter prefix
+ * @param {string} statusFilter filter status
+ * @param {string} jobFileNameFilter filter status
+ */
+async function testJobFilesClick(driver, ownerFilter, prefixFilter, statusFilter, jobFileName) {
+    await testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter);
+    await driver.sleep(1000); // TODO:: replace with driver wait for element to be visible
+    const fileLinks = await driver.findElements(By.css('.job-instance > ul > li > .content-link'));
+    const len = fileLinks.length || 0;
+
+    let foundJobName = false;
+    for (let i = 0; i < len; i++) {
+        const jobFileText = await fileLinks[i].getText();
+        if (jobFileText === jobFileName) {
+            foundJobName = true;
+            await fileLinks[i].click();
+        }
+    }
+
+    return foundJobName;
+}
+
 module.exports = {
     testElementAppearsXTimesById,
     testElementAppearsXTimesByCSS,
@@ -228,4 +261,5 @@ module.exports = {
     testOwnerFilterFetching,
     testStatusFilterFetching,
     testJobFilesLoad,
+    testJobFilesClick,
 };

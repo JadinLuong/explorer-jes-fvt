@@ -498,7 +498,7 @@ describe('JES explorer function verification tests', () => {
                     expect(await testJobPrefixFilter(driver, expectedPrefix)).to.be.true;
                 });
 
-                it.only('Should handle fetching no jobs based on crazy prefix (1ZZZZZZ1)', async () => {
+                it('Should handle fetching no jobs based on crazy prefix (1ZZZZZZ1)', async () => {
                     const testPrefix = '1ZZZZZZ1';
                     const filters = { prefix: testPrefix };
                     const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };

@@ -497,8 +497,8 @@ describe('JES explorer function verification tests', () => {
                     expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
                     expect(await testJobPrefixFilter(driver, expectedPrefix)).to.be.true;
                 });
-                // TODO::rework test once we have message in the tree showing no jobs found
-                it('Should handle fetching no jobs based on crazy prefix (1ZZZZZZ1)', async () => {
+
+                it.only('Should handle fetching no jobs based on crazy prefix (1ZZZZZZ1)', async () => {
                     const testPrefix = '1ZZZZZZ1';
                     const filters = { prefix: testPrefix };
                     const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
@@ -506,7 +506,10 @@ describe('JES explorer function verification tests', () => {
                     await loadPageWithFilterOptions(FILTER_BASE_URL, DEFAULT_SEARCH_FILTERS, { checkJobsLoaded: false })(driver, filters);
 
                     expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
-                    expect(await testElementAppearsXTimesByCSS(driver, '.job-instance', 0)).to.be.true;
+                    expect(await testElementAppearsXTimesByCSS(driver, '.job-instance', 1)).to.be.true;
+
+                    const jobsNotFoundElement = await driver.findElement(By.css('.job-instance'));
+                    expect(await jobsNotFoundElement.getText()).to.be.equal('No jobs found');
                 });
             });
             describe('JobId Url Filter', () => {
@@ -558,7 +561,7 @@ describe('JES explorer function verification tests', () => {
                 it('Should handle fetching only OUTPUT jobs', async () => {
                     const filters = { status: 'OUTPUT' };
                     const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
-                    const expectedStatus = ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL ERROR'];
+                    const expectedStatus = ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL', 'SYS'];
 
                     await loadUrlWithSearchFilters(driver, filters);
                     expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
@@ -573,8 +576,8 @@ describe('JES explorer function verification tests', () => {
         const testFileName = 'JESJCL';
         let testFilters;
 
-        before('get jobIds list from jobs filtered by ZOWE* prefix', async () => {
-            const filters = { prefix: 'ZOWE*' };
+        before('get jobIds list from jobs filtered by ZOWE_JOB_NAME prefix', async () => {
+            const filters = { prefix: ZOWE_JOB_NAME, status: 'ACTIVE' };
             await loadUrlWithSearchFilters(driver, filters);
             const jobObjs = await waitForAndExtractParsedJobs(driver);
             expect(jobObjs && jobObjs.length > 0).to.be.true;

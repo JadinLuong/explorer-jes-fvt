@@ -70,7 +70,7 @@ const parseFilterText = filterText => {
 };
 
 const parseJobText = text => {
-    const regex = /(.*):(.*) \[([^ ]*) ?(.*)\]/;
+    const regex = /(.*):([^ ]*) ?\[([^ ]*) ?(.*)\]/;
     const tokens = text.match(regex);
 
     let prefix;

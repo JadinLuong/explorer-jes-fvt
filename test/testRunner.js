@@ -11,7 +11,15 @@ const {
     findAndClickApplyButton,
     reloadAndOpenFilterPannel,
     waitForAndExtractJobs,
-    textHighlightColors,
+    waitForAndExtractParsedJobs,
+    loadPageWithFilterOptions,
+    DEFAULT_SEARCH_FILTERS,
+    getTextLineElements,
+    VAR_LANG_CLASS,
+    COMMENT_STR_CLASS,
+    COMMENT_CLASS,
+    COMMENT_ATTR_CLASS,
+    NO_CLASS,
 } = require('./utilities');
 
 const {
@@ -27,13 +35,27 @@ const {
     testStatusFilterFetching,
     testJobFilesLoad,
     testJobFilesClick,
+    testJobOwnerFilter,
+    testJobPrefixFilter,
+    testJobStatusFilter,
+    testJobIdFilter,
+    testFilterDisplayStringValues,
+    testFilterFormInputValues,
+    testHiglightColorByClass,
+    testAllHiglightColor,
 } = require('./testFunctions');
 
 require('dotenv').config();
 
 const {
-    ZOSUSERNAME: USERNAME, PASSWORD, ZOWE_JOB_NAME, SERVER_HOST_NAME, SERVER_HTTPS_PORT,
+    ZOWE_USERNAME: USERNAME, ZOWE_PASSWORD: PASSWORD, ZOWE_JOB_NAME, SERVER_HOST_NAME, SERVER_HTTPS_PORT,
 } = process.env;
+
+
+const BASE_URL = `https://${SERVER_HOST_NAME}:${SERVER_HTTPS_PORT}/ui/v1/explorer-jes`;
+const FILTER_BASE_URL = `${BASE_URL}/#/`;
+const loadUrlWithSearchFilters = loadPageWithFilterOptions(FILTER_BASE_URL, DEFAULT_SEARCH_FILTERS);
+
 
 describe('JES explorer function verification tests', () => {
     let driver;
@@ -48,7 +70,7 @@ describe('JES explorer function verification tests', () => {
         // TODO:: Do we need to turn this into a singleton in order to have driver accessible by multiple files in global namespace?
         driver = await getDriver();
         try {
-            await loadPage(driver, `https://${SERVER_HOST_NAME}:${SERVER_HTTPS_PORT}/ui/v1/explorer-jes`, USERNAME, PASSWORD);
+            await loadPage(driver, BASE_URL, USERNAME, PASSWORD);
             // make sure tree and editor have loaded
             await driver.wait(until.elementLocated(By.id('job-list')), 30000);
             await driver.wait(until.elementLocated(By.id('embeddedEditor')), 30000);
@@ -71,7 +93,7 @@ describe('JES explorer function verification tests', () => {
                 await driver.manage().window().setRect({ width: 1600, height: 800 });
             });
             // TODO:: replace offset with constant
-            it('Should handle resizing of tree card component', async () => {
+            it.skip('Should handle resizing of tree card component', async () => {
                 expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'tree-text-content', 126)).to.be.true;
             });
             // TODO:: change overflow of job-list to scroll so we can check this correctly
@@ -82,7 +104,7 @@ describe('JES explorer function verification tests', () => {
             it.skip('Should handle resizing of editor card component', async () => {
                 expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'content-viewer', 126)).to.be.true;
             });
-            it('Should handle resizing just the editor text area', async () => {
+            it.skip('Should handle resizing just the editor text area', async () => {
                 expect(await testWindowHeightChangeForcesComponentHeightChange(driver, 'embeddedEditor', 126 + 8)).to.be.true;
             });
         });
@@ -138,7 +160,7 @@ describe('JES explorer function verification tests', () => {
 
                 it('Should pre-populate owner field with username', async () => {
                     const ownerField = await driver.findElement(By.id('filter-owner-field'));
-                    expect(await ownerField.getAttribute('value')).to.equal(USERNAME);
+                    expect(await ownerField.getAttribute('value')).to.equal(USERNAME.toUpperCase());
                 });
 
                 it('Should allow input fields to be changed', async () => {
@@ -153,7 +175,7 @@ describe('JES explorer function verification tests', () => {
                     expect(await testTextInputFieldCanBeModified(driver, 'filter-jobId-field'), 'filter-jobId-field wrong').to.be.true;
                     const resetButton = await driver.findElement(By.id('filters-reset-button'));
                     await resetButton.click();
-                    expect(await testTextInputFieldValue(driver, 'filter-owner-field', USERNAME), 'filter-owner-field wrong').to.be.true;
+                    expect(await testTextInputFieldValue(driver, 'filter-owner-field', USERNAME.toUpperCase()), 'filter-owner-field wrong').to.be.true;
                     expect(await testTextInputFieldValue(driver, 'filter-prefix-field', '*'), 'filter-prefix-field wrong').to.be.true;
                     expect(await testTextInputFieldValue(driver, 'filter-jobId-field', '*'), 'filter-jobId-field wrong').to.be.true;
                 });
@@ -170,7 +192,6 @@ describe('JES explorer function verification tests', () => {
                 });
             });
         });
-
         describe('Tree interaction', () => {
             // TODO:: Implement once we have an ID for refresh icon and loading icon
             it.skip('Should handle reloading jobs when clicking refresh icon');
@@ -206,17 +227,21 @@ describe('JES explorer function verification tests', () => {
                     expect(await testColourOfStatus(driver, 'OUTPUT', GREY_STATUS)).to.be.true;
                 });
 
-                it('Should handle showing jobs as ABEND', async () => {
+                // TODO: NOT ALWAYS HAVE ABEND
+                it.skip('Should handle showing jobs as ABEND', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'ABEND'), 'show job status: ABEND').to.be.true;
                 });
+
                 it('Should handle showing ABEND jobs with red status', async () => {
                     const RED_STATUS = 'rgb(255, 0, 0)';
                     expect(await testColourOfStatus(driver, 'ABEND', RED_STATUS)).to.be.true;
                 });
 
-                it('Should handle showing jobs with JCL ERROR', async () => {
+                // TODO: NOT ALWAYS HAVE JCL ERROR
+                it.skip('Should handle showing jobs with JCL ERROR', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'JCL ERROR'), 'show job status: JCL ERROR').to.be.true;
                 });
+
                 it('Should handle showing JCL ERROR jobs with red status', async () => {
                     const RED_STATUS = 'rgb(255, 0, 0)';
                     expect(await testColourOfStatus(driver, 'ABEND', RED_STATUS)).to.be.true;
@@ -240,9 +265,9 @@ describe('JES explorer function verification tests', () => {
                     });
                 });
 
-                describe('Onwer Filter', () => {
+                describe('Owner Filter', () => {
                     it('Should handle fetching jobs based on owner filter set to ZOWESVR owner (IZUSVR)', async () => {
-                        expect(await testOwnerFilterFetching(driver, 'IZUSVR', ['IZU', 'ZOWE'])).to.be.true;
+                        expect(await testOwnerFilterFetching(driver, 'IZUSVR', ['IZU', 'ZOWE', 'ZWE'])).to.be.true;
                     });
                     // TODO:: remove skip flag and rework test once we have message in the tree showing no jobs found
                     it.skip('Should handle fetching no jobs based on crazy owner (1ZZZZZZ1)', async () => {
@@ -259,7 +284,7 @@ describe('JES explorer function verification tests', () => {
                         expect(await testStatusFilterFetching(driver, 'INPUT')).to.be.true;
                     });
                     it('Should handle fetching only OUTPUT jobs', async () => {
-                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND S', 'OUTPUT', 'CC ', 'CANCELED', 'JCL ERROR'])).to.be.true;
+                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL'])).to.be.true;
                     });
                 });
 
@@ -330,7 +355,7 @@ describe('JES explorer function verification tests', () => {
 
             before('before editor behavior', async () => {
                 expect(await testJobFilesClick(driver, '*', ZOWE_JOB_NAME, 'status-ACTIVE', jobFileName)).to.be.true;
-                await driver.sleep(1000); // TODO:: replace with driver wait for element to be visible
+                await driver.sleep(10000); // TODO:: replace with driver wait for element to be visible
             });
 
             it('Set content viewer header to Loading:');
@@ -353,51 +378,34 @@ describe('JES explorer function verification tests', () => {
                     .to.be.an('array')
                     .that.has.length.gte(1);
             });
-            it('Should highlight JESJCL correctly', async () => {
-                await driver.wait(until.elementLocated(By.css('.textviewContent > div > span')));
+            describe('Should highlight JESJCL correctly', () => {
+                let elems;
 
-                const textLineSpans = await driver.findElements(By.css('.textviewContent > div > span'));
-
-                expect(textLineSpans)
-                    .to.be.an('array')
-                    .that.has.length.gte(1);
-
-                const elems = await Promise.all(
-                    textLineSpans.map(async ld => {
-                        const elemText = await ld.getText();
-                        const elemCss = await ld.getAttribute('class');
-                        const elemColor = await ld.getCssValue('color');
-                        return { elemText, elemCss, elemColor };
-                    }),
-                );
-
-                let testColors = false;
-                // eslint-disable-next-line func-names
-                Object.keys(textHighlightColors).forEach(cc => {
-                    let colorClass = cc;
-                    testColors = false;
-                    const colorVal = textHighlightColors[colorClass];
-                    if (colorClass === 'none') {
-                        colorClass = '';
-                    }
-                    const colorArray = [
-                        ...new Set(
-                            elems
-                                .filter(e => {
-                                    return e.elemCss === colorClass;
-                                })
-                                .map(e => {
-                                    return e.elemColor;
-                                }),
-                        )];
-                    expect(colorArray)
-                        .to.be.an('array')
-                        .that.has.lengthOf(1);
-                    expect(colorArray[0]).to.be.equal(colorVal);
-                    testColors = true;
+                before('before highlight JESJCL correctly', async () => {
+                    elems = await getTextLineElements(driver);
+                    expect(elems).to.be.an('array').that.has.lengthOf.at.least(1);
                 });
 
-                expect(testColors).to.be.true;
+                it('test variable-language class color', () => {
+                    const colorClass = VAR_LANG_CLASS;
+                    expect(testHiglightColorByClass(colorClass, elems)).to.be.true;
+                });
+                it('test cm-string class color', () => {
+                    const colorClass = COMMENT_STR_CLASS;
+                    expect(testHiglightColorByClass(colorClass, elems)).to.be.true;
+                });
+                it('test comment class color', () => {
+                    const colorClass = COMMENT_CLASS;
+                    expect(testHiglightColorByClass(colorClass, elems)).to.be.true;
+                });
+                it('test cm-attribute class color', () => {
+                    const colorClass = COMMENT_ATTR_CLASS;
+                    expect(testHiglightColorByClass(colorClass, elems)).to.be.true;
+                });
+                it('test lines without color class', () => {
+                    const colorClass = NO_CLASS;
+                    expect(testHiglightColorByClass(colorClass, elems)).to.be.true;
+                });
             });
 
             it('Should be read only', async () => {
@@ -424,23 +432,187 @@ describe('JES explorer function verification tests', () => {
     });
 
     describe('JES explorer home view with filters in url query', () => {
-        it('Should handle rendering the expected componets when url filter params are specified (same as home)');
+        it('Should handle rendering the expected components when url filter params are specified (same as home)');
         describe('url queries detected and put in filter component', () => {
-            it('Should handle setting prefix filter from url querry');
-            it('Should handle setting jobID from url query');
-            it('Should handle setting status from url query');
-            it('Should handle setting owner from url query');
-            it('Should handle setting all filters from url query');
-            it('Should handle a none recognised query parameter gracefully (still load page)');
-        });
-        describe('Job fetch', () => {
-            it('Should handle fetching jobs based on url queries');
+            describe('basic url load test', () => {
+                it('Should handle setting all filters from url query', async () => {
+                    const filters = {
+                        owner: 'IZU*', prefix: 'pre*', jobId: 'st', status: 'INPUT',
+                    };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testFilterFormInputValues(driver, expectedFilter)).to.be.true;
+                });
+
+                // raised github issue #84 against explorer-jes repo, remove skip after that resolution
+                it.skip('Should handle a none recognised query parameter gracefully (still load page)', async () => {
+                    const expectedFilter = {
+                        owner: 'IZU*',
+                        prefix: 'pre*',
+                        jobId: 'st',
+                        status: 'INPUT',
+                    };
+                    const filters = { ...DEFAULT_SEARCH_FILTERS, ...expectedFilter, ...{ noParam: 'noValue' } };
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testFilterFormInputValues(driver, expectedFilter)).to.be.true;
+                });
+            });
+            describe('Owner Url Filter', () => {
+                it('Should handle setting owner from url query', async () => {
+                    const filters = { owner: 'IZUSVR' };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+                    const expectedJobs = ['IZU', 'ZOWE', 'ZWE'];
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobOwnerFilter(driver, expectedJobs)).to.be.true;
+                });
+            });
+            describe('Prefix Url Filter', () => {
+                it('Should handle fetching jobs based on full prefix (ZOWE_JOB_NAME)', async () => {
+                    const filters = { prefix: ZOWE_JOB_NAME };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+                    const expectedPrefix = ZOWE_JOB_NAME;
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobPrefixFilter(driver, expectedPrefix)).to.be.true;
+                });
+
+                it('Should handle fetching jobs based on prefix with asterisk (ZOWE*)', async () => {
+                    const expectedPrefix = 'ZOWE*';
+                    const filters = { prefix: expectedPrefix };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobPrefixFilter(driver, expectedPrefix)).to.be.true;
+                });
+                // TODO::rework test once we have message in the tree showing no jobs found
+                it('Should handle fetching no jobs based on crazy prefix (1ZZZZZZ1)', async () => {
+                    const testPrefix = '1ZZZZZZ1';
+                    const filters = { prefix: testPrefix };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+
+                    await loadPageWithFilterOptions(FILTER_BASE_URL, DEFAULT_SEARCH_FILTERS, { checkJobsLoaded: false })(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testElementAppearsXTimesByCSS(driver, '.job-instance', 0)).to.be.true;
+                });
+            });
+            describe('JobId Url Filter', () => {
+                let jobIds;
+                before('get jobIds list from jobs filtered by IZUSVR owner', async () => {
+                    const filters = { owner: 'IZUSVR' };
+                    await loadUrlWithSearchFilters(driver, filters);
+                    const jobObjs = await waitForAndExtractParsedJobs(driver);
+                    jobIds = jobObjs.map(j => { return j.jobId; });
+                });
+
+                it('Should handle setting jobID from url query', async () => {
+                    const expectedJobId = jobIds[0];
+                    const filters = { jobId: expectedJobId };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobIdFilter(driver, [expectedJobId])).to.be.true;
+                });
+            });
+
+            describe('Status Url Filter', () => {
+                it('Should handle setting status from url query');
+                it('Should handle fetching only ACTIVE jobs', async () => {
+                    const filters = { status: 'ACTIVE' };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+                    const expectedStatus = ['ACTIVE'];
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobStatusFilter(driver, expectedStatus)).to.be.true;
+                });
+
+                // TODO:: Can't gurantee we will have jobs in INPUT state so skip until we can
+                it.skip('Should handle fetching only INPUT jobs', async () => {
+                    const filters = { status: 'INPUT' };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+                    const expectedStatus = ['INPUT'];
+
+                    await loadUrlWithSearchFilters(driver, filters);
+
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobStatusFilter(driver, expectedStatus)).to.be.true;
+                });
+
+                it('Should handle fetching only OUTPUT jobs', async () => {
+                    const filters = { status: 'OUTPUT' };
+                    const expectedFilter = { ...DEFAULT_SEARCH_FILTERS, ...filters };
+                    const expectedStatus = ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL ERROR'];
+
+                    await loadUrlWithSearchFilters(driver, filters);
+                    expect(await testFilterDisplayStringValues(driver, expectedFilter)).to.be.true;
+                    expect(await testJobStatusFilter(driver, expectedStatus)).to.be.true;
+                });
+            });
         });
     });
     describe('JES explorer spool file in url query (explorer-jes/#/viewer)', () => {
-        it('Should handle rendering expected components with viewer route (File Viewer)');
-        it('Should handle fetching file from url query string');
-        it('Should render file name, job name and job id in card header');
-        it('Should handle rendeing file contents in Orio editor');
+        const VIEWER_BASE_URL = `${BASE_URL}/#/viewer`;
+        const loadUrlWithViewerFilters = loadPageWithFilterOptions(VIEWER_BASE_URL, {}, { checkJobsLoaded: false });
+        const testFileName = 'JESJCL';
+        let testFilters;
+
+        before('get jobIds list from jobs filtered by ZOWE* prefix', async () => {
+            const filters = { prefix: 'ZOWE*' };
+            await loadUrlWithSearchFilters(driver, filters);
+            const jobObjs = await waitForAndExtractParsedJobs(driver);
+            expect(jobObjs && jobObjs.length > 0).to.be.true;
+            testFilters = {
+                jobName: jobObjs[0].prefix,
+                jobId: jobObjs[0].jobId,
+                fileId: 3,
+            };
+            await loadUrlWithViewerFilters(driver, testFilters);
+        });
+
+        it('Should handle rendering expected components with viewer route (File Viewer)', async () => {
+            // no tree card component on side
+            expect(await testElementAppearsXTimesByCSS(driver, '.tree-card', 0)).to.be.true;
+
+            // expect content viewer to be present
+            expect(await testElementAppearsXTimesByCSS(driver, '#content-viewer', 1)).to.be.true;
+        });
+
+        it('Should render file name, job name and job id in card header', async () => {
+            // expect content viewer to be present
+            expect(await testElementAppearsXTimesByCSS(driver, '#content-viewer > div > div > div > span', 2)).to.be.true;
+            const cardHeader = await driver.findElement(By.css('#content-viewer > div > div > div > span'));
+
+            const cardHeaderText = await cardHeader.getText();
+            expect(cardHeaderText).to.not.be.undefined;
+            expect(cardHeaderText).to.not.be.empty;
+
+            const [jobName, jobId, fileName] = cardHeaderText.split(' - ');
+            expect(jobName).to.be.equal(testFilters.jobName);
+            expect(jobId).to.be.equal(testFilters.jobId);
+            expect(fileName).to.be.equal(testFileName);
+        });
+
+        it('Should handle rendering file contents in Orion editor', async () => {
+            const textElems = await getTextLineElements(driver);
+            expect(textElems).to.be.an('array').that.has.lengthOf.at.least(1);
+            expect(testAllHiglightColor(textElems)).to.be.true;
+        });
     });
 });

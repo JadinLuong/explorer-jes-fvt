@@ -4,8 +4,18 @@ const { expect } = require('chai');
 const {
     findAndClickApplyButton,
     waitForAndExtractJobs,
+    waitForAndExtractFilters,
     setStatusFilter,
     reloadAndOpenFilterPannel,
+    checkJobsOwner,
+    checkJobsStatus,
+    checkJobsId,
+    checkJobsPrefix,
+    compareFilters,
+    getAllFilterValues,
+    textHighlightColors,
+    NO_CLASS,
+    textColorClasses,
 } = require('./utilities');
 
 /**
@@ -78,7 +88,8 @@ async function testTextInputFieldCanBeModified(driver, id, replaceText = 'TEST')
 async function testTextInputFieldValue(driver, id, expectedValue) {
     try {
         const element = await driver.findElement(By.id(id));
-        expect(await element.getAttribute('value')).to.equal(expectedValue);
+        const val = await element.getAttribute('value');
+        expect(val).to.equal(expectedValue);
     } catch (e) {
         return false;
     }
@@ -138,17 +149,7 @@ async function testPrefixFilterFetching(driver, prefix) {
     await findAndClickApplyButton(driver);
 
     const jobs = await waitForAndExtractJobs(driver);
-
-    let allMatchFlag = true;
-    const searchPrefix = prefix.endsWith('*') ? prefix.substr(0, prefix.length - 1) : prefix;
-    for (const job of jobs) {
-        const text = await job.getText();
-        if (!text.startsWith(searchPrefix)) {
-            allMatchFlag = false;
-            console.log(`${text} is not expected`);
-        }
-    }
-    return allMatchFlag;
+    return checkJobsPrefix(jobs, prefix);
 }
 
 /**
@@ -160,23 +161,10 @@ async function testPrefixFilterFetching(driver, prefix) {
 async function testOwnerFilterFetching(driver, owner, potentialJobs) {
     await testTextInputFieldCanBeModified(driver, 'filter-owner-field', owner);
     await findAndClickApplyButton(driver);
-
     const jobs = await waitForAndExtractJobs(driver);
-
-    if (potentialJobs.length >= 1) {
-        let allMatchFlag = true;
-        for (const job of jobs) {
-            const text = await job.getText();
-            if (!potentialJobs.some(potentialJob => { return text.startsWith(potentialJob); })) {
-                allMatchFlag = false;
-                console.log(`${text} is not expected status`);
-            }
-        }
-        return allMatchFlag;
-    }
-    // If we have no potential jobs to match then we're expecting no jobs
-    return jobs.length === 0;
+    return checkJobsOwner(jobs, potentialJobs);
 }
+
 
 async function testStatusFilterFetching(driver, status, potentialStatuses) {
     await testTextInputFieldCanBeModified(driver, 'filter-owner-field', '*');
@@ -185,15 +173,7 @@ async function testStatusFilterFetching(driver, status, potentialStatuses) {
 
     const jobs = await waitForAndExtractJobs(driver);
 
-    let allMatchFlag = true;
-    for (const job of jobs) {
-        const text = await job.getText();
-        if (!potentialStatuses.some(potentialStatus => { return text.includes(potentialStatus); })) {
-            allMatchFlag = false;
-            console.log(`${text} is not an expected status`);
-        }
-    }
-    return allMatchFlag;
+    return checkJobsStatus(jobs, potentialStatuses);
 }
 
 /**
@@ -204,7 +184,8 @@ async function testStatusFilterFetching(driver, status, potentialStatuses) {
  * @param {string} status filter status
  */
 async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter) {
-    await reloadAndOpenFilterPannel(driver);
+    const jobsInstances = await driver.findElements(By.className('job-instance'));
+    await reloadAndOpenFilterPannel(driver, jobsInstances.length > 0);
     await testTextInputFieldCanBeModified(driver, 'filter-owner-field', ownerFilter);
     await testTextInputFieldCanBeModified(driver, 'filter-prefix-field', prefixFilter);
     await setStatusFilter(driver, statusFilter);
@@ -233,21 +214,77 @@ async function testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter)
  */
 async function testJobFilesClick(driver, ownerFilter, prefixFilter, statusFilter, jobFileName) {
     await testJobFilesLoad(driver, ownerFilter, prefixFilter, statusFilter);
-    await driver.sleep(1000); // TODO:: replace with driver wait for element to be visible
+    await driver.sleep(10000); // TODO:: replace with driver wait for element to be visible
     const fileLinks = await driver.findElements(By.css('.job-instance > ul > li > .content-link'));
-    const len = fileLinks.length || 0;
 
-    let foundJobName = false;
-    for (let i = 0; i < len; i++) {
-        const jobFileText = await fileLinks[i].getText();
-        if (jobFileText === jobFileName) {
-            foundJobName = true;
-            await fileLinks[i].click();
-        }
+    const jobs = await Promise.all(fileLinks.map(async j => { return { text: await j.getText(), job: j }; }));
+    const testJob = jobs.filter(j => { return j.text === jobFileName; });
+
+    if (testJob.length > 0) {
+        await testJob[0].job.click();
     }
 
-    return foundJobName;
+    return testJob.length > 0;
 }
+
+const testHiglightColorByClass = (colorClass, elems) => {
+    const colorVal = textHighlightColors[colorClass];
+
+    let classStr = colorClass;
+    if (colorClass === NO_CLASS) {
+        classStr = '';
+    }
+
+    const colorArray = [
+        ...new Set(
+            elems
+                .filter(e => {
+                    return e.elemCss === classStr;
+                })
+                .map(e => {
+                    return e.elemColor;
+                }),
+        )];
+    let testColor = colorArray.length === 1;
+    testColor = testColor && colorArray[0] === colorVal;
+    return testColor;
+};
+
+const testAllHiglightColor = elems => {
+    let testHighlights = true;
+    textColorClasses.forEach(colorClass => {
+        testHighlights = testHighlights && testHiglightColorByClass(colorClass, elems);
+    });
+
+    return testHighlights;
+};
+
+const testFilterDisplayStringValues = async (driver, expectedFilters) => {
+    const actualFilters = await waitForAndExtractFilters(driver);
+    return compareFilters(actualFilters, expectedFilters);
+};
+
+const testFilterFormInputValues = async (driver, expectedFilters) => {
+    const element = await driver.findElement(By.id('filter-view'));
+    await element.click();
+    const actualFilters = await getAllFilterValues(driver);
+    return compareFilters(actualFilters, expectedFilters);
+};
+
+
+const testJobUrlFilters = checkFunc => {
+    return async (driver, expectedVals) => {
+        const jobs = await waitForAndExtractJobs(driver);
+        const isExpected = await checkFunc(jobs, expectedVals);
+        return isExpected;
+    };
+};
+
+const testJobOwnerFilter = testJobUrlFilters(checkJobsOwner);
+const testJobPrefixFilter = testJobUrlFilters(checkJobsPrefix);
+const testJobStatusFilter = testJobUrlFilters(checkJobsStatus);
+const testJobIdFilter = testJobUrlFilters(checkJobsId);
+
 
 module.exports = {
     testElementAppearsXTimesById,
@@ -262,4 +299,12 @@ module.exports = {
     testStatusFilterFetching,
     testJobFilesLoad,
     testJobFilesClick,
+    testJobOwnerFilter,
+    testJobPrefixFilter,
+    testJobStatusFilter,
+    testJobIdFilter,
+    testFilterDisplayStringValues,
+    testFilterFormInputValues,
+    testHiglightColorByClass,
+    testAllHiglightColor,
 };

@@ -15,11 +15,14 @@
 
 ### Run Tests:
 
-Parameter values should be replaced with your own
+Parameter values should be replaced with your own.  
+Either create environment variables listed below
+or create a .env file in the root directory during develpment      
+Add environment-specific variables on new lines in the form of NAME=VALUE. For example
 
 ```
-USERNAME=IBMUSER \
-PASSWORD=12345678 \
+ZOWE_USERNAME=IBMUSER \
+ZOWE_PASSWORD=12345678 \
 ZOWE_JOB_NAME=ZOWESVR \
 SERVER_HOST_NAME=zosHost.com \
 SERVER_HTTPS_PORT=7554 \

@@ -140,7 +140,7 @@ const checkJobsAttribute = attr => {
         const jobObjs = await Promise.all(actualJobs.map(parseJob));
 
         for (const job of jobObjs) {
-            if (!expectedValues.some(val => { return job[attr] === val; })) {
+            if (!expectedValues.some(val => { return job[attr].includes(val); })) {
                 allMatchFlag = false;
                 console.log(`${job.text} is not expected status`);
                 break;

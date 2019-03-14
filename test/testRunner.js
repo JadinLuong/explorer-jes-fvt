@@ -208,13 +208,16 @@ describe('JES explorer function verification tests', () => {
                 it('Should handle showing jobs as ACTIVE', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'ACTIVE'), 'show job status: ACTIVE').to.be.true;
                 });
-                // TODO:: Implement once we have the div wrapper around ACTIVE jobs
-                it.skip('Should handle showing ACTIVE jobs with blue status');
+                it('Should handle showing ACTIVE jobs with blue status', async () => {
+                    const BLUE_STATUS = 'rgb(46, 119, 161)';
+                    expect(await testColourOfStatus(driver, 'ACTIVE', BLUE_STATUS)).to.be.true;
+                });
 
                 it('Should handle showing jobs as finished with CC 00', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'CC 00'), 'show job status: CC 00').to.be.true;
                 });
-                it('Should handle showing CC 00** jobs with grey status', async () => {
+                // TODO:: Implement once https://github.com/zowe/explorer-jes/issues/86 is resolved
+                it.skip('Should handle showing CC 00** jobs with grey status', async () => {
                     const GREY_STATUS = 'rgb(128, 128, 128)';
                     expect(await testColourOfStatus(driver, 'CC 00', GREY_STATUS)).to.be.true;
                 });
@@ -231,7 +234,6 @@ describe('JES explorer function verification tests', () => {
                 it.skip('Should handle showing jobs as ABEND', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'ABEND'), 'show job status: ABEND').to.be.true;
                 });
-
                 it('Should handle showing ABEND jobs with red status', async () => {
                     const RED_STATUS = 'rgb(255, 0, 0)';
                     expect(await testColourOfStatus(driver, 'ABEND', RED_STATUS)).to.be.true;
@@ -241,7 +243,6 @@ describe('JES explorer function verification tests', () => {
                 it.skip('Should handle showing jobs with JCL ERROR', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'JCL ERROR'), 'show job status: JCL ERROR').to.be.true;
                 });
-
                 it('Should handle showing JCL ERROR jobs with red status', async () => {
                     const RED_STATUS = 'rgb(255, 0, 0)';
                     expect(await testColourOfStatus(driver, 'ABEND', RED_STATUS)).to.be.true;
@@ -284,7 +285,7 @@ describe('JES explorer function verification tests', () => {
                         expect(await testStatusFilterFetching(driver, 'INPUT')).to.be.true;
                     });
                     it('Should handle fetching only OUTPUT jobs', async () => {
-                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL'])).to.be.true;
+                        expect(await testStatusFilterFetching(driver, 'OUTPUT', ['ABEND', 'OUTPUT', 'CC', 'CANCELED', 'JCL', 'SYS'])).to.be.true;
                     });
                 });
 

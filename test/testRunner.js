@@ -216,8 +216,7 @@ describe('JES explorer function verification tests', () => {
                 it('Should handle showing jobs as finished with CC 00', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'CC 00'), 'show job status: CC 00').to.be.true;
                 });
-                // TODO:: Implement once https://github.com/zowe/explorer-jes/issues/86 is resolved
-                it.skip('Should handle showing CC 00** jobs with grey status', async () => {
+                it('Should handle showing CC 00** jobs with grey status', async () => {
                     const GREY_STATUS = 'rgb(128, 128, 128)';
                     expect(await testColourOfStatus(driver, 'CC 00', GREY_STATUS)).to.be.true;
                 });
@@ -225,7 +224,8 @@ describe('JES explorer function verification tests', () => {
                 it('Should handle showing jobs as in OUTPUT', async () => {
                     expect(await testJobInstancesShowsStatus(driver, 'OUTPUT'), 'show job status: OUTPUT').to.be.true;
                 });
-                it('Should handle showing OUTPUT jobs with grey status', async () => {
+                // TODO:: Implement once https://github.com/zowe/explorer-jes/issues/86 is resolved
+                it.skip('Should handle showing OUTPUT jobs with grey status', async () => {
                     const GREY_STATUS = 'rgb(128, 128, 128)';
                     expect(await testColourOfStatus(driver, 'OUTPUT', GREY_STATUS)).to.be.true;
                 });
